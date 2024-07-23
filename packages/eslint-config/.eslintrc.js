@@ -11,6 +11,7 @@ module.exports = {
     'plugin:@typescript-eslint/recommended',
     'prettier/@typescript-eslint',
     'prettier/standard',
+    'prettier/recommended',
     'prettier/react',
     "next/core-web-vitals",
   ],
@@ -33,5 +34,5 @@ module.exports = {
     react: {
       version: 'detect',
     },
-  }
-}
+  },
+};

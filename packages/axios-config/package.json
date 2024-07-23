@@ -1,0 +1,8 @@
+{
+  "name": "@nimbus-trainee-challenge-players/axios-config",
+  "version": "1.0.0",
+  "main": "src/index.ts",
+  "dependencies": {
+    "axios": "^1.7.2"
+  }
+}
