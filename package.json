@@ -1,0 +1,17 @@
+{
+  "name": "nimbus-trainee-challenge-players",
+  "version": "1.0.0",
+  "private": true,
+  "workspaces": {
+    "packages": [
+      "packages/*"
+    ]
+  },
+  "author": "Lucas Oliveira <lucaoxt@gmail.com>",
+  "license": "MIT",
+  "devDependencies": {
+    "@nimbus-trainee-challenge-players/eslint-config": "*",
+    "@types/semver": "7.5.8",
+    "typescript": "^5"
+  }
+}
