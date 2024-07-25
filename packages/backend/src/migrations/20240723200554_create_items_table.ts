@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.createTable('items', table => {
     table.uuid('id').primary();
-    table.string('name', 150).notNullable();
+    table.string('name', 150).notNullable().unique();
     table.string('description', 150).notNullable();
     table
       .enum('type', ['Weapon', 'Armor', 'Consumable'], {

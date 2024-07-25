@@ -3,7 +3,7 @@ import type { Knex } from 'knex';
 export async function up(knex: Knex): Promise<void> {
   return knex.schema.createTable('bosses', table => {
     table.uuid('id').primary();
-    table.string('name', 150).notNullable();
+    table.string('name', 150).notNullable().unique();
     table
       .enum('difficulty', ['Easy', 'Medium', 'Hard', 'Very Hard'], {
         useNative: true,

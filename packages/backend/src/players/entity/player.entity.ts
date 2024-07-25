@@ -1,6 +1,6 @@
 import { Class } from '../enums/class.enum';
 
-export interface Player {
+export type Player = {
   id: string; //UUID
   name: string;
   level: number;
