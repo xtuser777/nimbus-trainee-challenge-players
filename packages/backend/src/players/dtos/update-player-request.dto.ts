@@ -1,7 +1,6 @@
 import { Class } from "../enums/class.enum";
 
-export class CreatePlayerDto {
+export class UpdatePlayerRequestDto {
   name: string;
-  level: number;
   class: Class;
 }

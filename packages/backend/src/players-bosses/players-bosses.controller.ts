@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post } from '@nestjs/common';
+import { Controller, Get, HttpCode, Param, Post } from '@nestjs/common';
 import { PlayersBossesService } from './players-bosses.service';
 
 @Controller('players')
@@ -11,6 +11,7 @@ export class PlayersBossesController {
   }
 
   @Post("/:playerId/bosses/:bossId")
+  @HttpCode(201)
   async create(@Param('playerId') playerId: string, @Param('bossId') bossId: string) {
     return this.playersBossesService.save(playerId, bossId);
   }

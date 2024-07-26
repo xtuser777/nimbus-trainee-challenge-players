@@ -1,7 +1,7 @@
-import { Body, Controller, Delete, Get, Param, Post, Put } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Post, Put } from '@nestjs/common';
 import { BossesService } from './bosses.service';
-import { CreateBossDto } from './dtos/create-boss.dto';
-import { UpdateBossDto } from './dtos/update-boss.dto';
+import { CreateBossRequestDto } from './dtos/create-boss-request.dto';
+import { UpdateBossRequestDto } from './dtos/update-boss-request.dto';
 
 @Controller('bosses')
 export class BossesController {
@@ -18,12 +18,13 @@ export class BossesController {
   }
 
   @Post("/")
-  async create(@Body() body: CreateBossDto) {
+  @HttpCode(201)
+  async create(@Body() body: CreateBossRequestDto) {
     return this.bossesService.save(body);
   }
 
   @Put('/:id')
-  async update(@Param("id") id: string, @Body() body: UpdateBossDto) {
+  async update(@Param("id") id: string, @Body() body: UpdateBossRequestDto) {
     return this.bossesService.update(id, body);
   }
 

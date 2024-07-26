@@ -1,6 +1,6 @@
 import { Difficulty } from "../enums/difficulty.enum";
 
-export class CreateBossDto {
+export class CreateBossRequestDto {
   name: string;
 	difficulty: Difficulty;
 }
