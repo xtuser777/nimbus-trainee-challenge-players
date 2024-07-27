@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Knex } from 'knex';
 import { Item } from './entity/item.entity';
 import { randomUUID } from 'node:crypto';
@@ -32,12 +36,8 @@ export class ItemsService {
     } catch (e) {
       console.error(e);
 
-      return new GetAllItemsResponseDto(
-        400,
-        false,
-        [],
-        0,
-        'error returning items.',
+      throw new BadRequestException(
+        new GetAllItemsResponseDto(400, false, [], 0, 'error returning items.'),
       );
     }
   }
@@ -51,17 +51,20 @@ export class ItemsService {
     } catch (e) {
       console.error(e);
 
-      return new GetOneItemResponseDto(
-        400,
-        false,
-        undefined,
-        'error returning item.',
+      throw new BadRequestException(
+        new GetOneItemResponseDto(
+          400,
+          false,
+          undefined,
+          'error returning item.',
+        ),
       );
     }
   }
 
   async save(dto: CreateItemRequestDto) {
     try {
+      await this.nameExists(dto.name, 'create');
       const item: Item = {
         id: randomUUID(),
         ...dto,
@@ -74,13 +77,16 @@ export class ItemsService {
     } catch (e) {
       console.error(e);
 
-      return new CreateItemResponseDto(400, false, 'error creating item.');
+      throw new BadRequestException(
+        new CreateItemResponseDto(400, false, 'error creating item.'),
+      );
     }
   }
 
   async update(id: string, dto: UpdateItemRequestDto) {
     try {
       await this.exists(id);
+      await this.nameExists(dto.name, 'update');
       const result = await this.knex('items')
         .update({ ...dto })
         .where({ id });
@@ -94,13 +100,27 @@ export class ItemsService {
     } catch (e) {
       console.error(e);
 
-      return new UpdateItemResponseDto(400, false, 'error updating item.', 0);
+      throw new BadRequestException(
+        new UpdateItemResponseDto(400, false, 'error updating item.', 0),
+      );
     }
   }
 
   async delete(id: string) {
     try {
       await this.exists(id);
+      const row = await this.knex('players_items')
+        .count('*')
+        .where({ item_id: id });
+      if (row['count'] > 0)
+        throw new BadRequestException(
+          new DeleteItemResponseDto(
+            400,
+            false,
+            'item owned by one or more players.',
+            0,
+          ),
+        );
       const result = await this.knex('items').where({ id }).del();
 
       return new DeleteItemResponseDto(
@@ -112,7 +132,9 @@ export class ItemsService {
     } catch (e) {
       console.error(e);
 
-      return new DeleteItemResponseDto(400, false, 'error removing item.', 0);
+      throw new BadRequestException(
+        new DeleteItemResponseDto(400, false, 'error removing item.', 0),
+      );
     }
   }
 
@@ -120,5 +142,28 @@ export class ItemsService {
     const result = await this.knex('items').select('id').where({ id }).first();
 
     if (!result) throw new NotFoundException('item not found.');
+  }
+
+  async nameExists(name: string, type: string) {
+    const result = await this.knex('items')
+      .count('names')
+      .from('items')
+      .where('name', '=', name);
+
+    if (result['count'] > 0)
+      throw new BadRequestException(
+        type === 'create'
+          ? new CreateItemResponseDto(
+              400,
+              false,
+              'this name already exists in database.',
+            )
+          : new UpdateItemResponseDto(
+              400,
+              false,
+              'this name already exists in database.',
+              0,
+            ),
+      );
   }
 }

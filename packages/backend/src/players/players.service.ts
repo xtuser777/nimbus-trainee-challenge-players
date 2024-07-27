@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Knex } from 'knex';
 import { Player } from './entity/player.entity';
 import { CreatePlayerRequestDto } from './dtos/create-player-request.dto';
@@ -39,7 +43,9 @@ export class PlayersService {
     } catch (e) {
       console.error(e);
 
-      return new GetAllPlayersResponseDto(400, false, 0, undefined);
+      throw new BadRequestException(
+        new GetAllPlayersResponseDto(400, false, 0, undefined),
+      );
     }
   }
 
@@ -60,20 +66,24 @@ export class PlayersService {
     } catch (e) {
       console.error(e);
 
-      return new GetOnePlayerResponseDto(
-        400,
-        false,
-        undefined,
-        'error returning the players.',
+      throw new BadRequestException(
+        new GetOnePlayerResponseDto(
+          400,
+          false,
+          undefined,
+          'error returning the players.',
+        ),
       );
     }
   }
 
   async save(dto: CreatePlayerRequestDto) {
     try {
+      await this.nameExists(dto.name, 'create');
       const player: Player = {
         id: randomUUID(),
         ...dto,
+        level: 1,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       };
@@ -88,10 +98,8 @@ export class PlayersService {
     } catch (e) {
       console.error(e);
 
-      return new CreatePlayerResponseDto(
-        400,
-        false,
-        'error adding the player.',
+      throw new BadRequestException(
+        new CreatePlayerResponseDto(400, false, 'error adding the player.'),
       );
     }
   }
@@ -99,6 +107,7 @@ export class PlayersService {
   async update(id: string, dto: UpdatePlayerRequestDto) {
     try {
       await this.exists(id);
+      await this.nameExists(dto.name, 'update');
       const result = await this.knex('players')
         .update({ ...dto })
         .where('id', id);
@@ -112,20 +121,31 @@ export class PlayersService {
     } catch (e) {
       console.error(e);
 
-      return new UpdatePlayerResponseDto(
-        400,
-        false,
-        'error updating player',
-        0,
+      throw new BadRequestException(
+        new UpdatePlayerResponseDto(400, false, 'error updating player', 0),
       );
     }
   }
 
   async levelUp(id: string) {
     try {
-      const player = await this.findOne(id);
+      await this.exists(id);
+      const player = await this.knex<Player>('players')
+        .select('level')
+        .where({ id })
+        .first();
+
+      if (player.level === 713)
+        throw new BadRequestException(
+          new UpdatePlayerResponseDto(
+            400,
+            false,
+            'limit of level of this player exceded.',
+            0,
+          ),
+        );
       const result = await this.knex('players')
-        .update({ level: player.data.level + 1 })
+        .update({ level: player.level + 1 })
         .where('id', id);
 
       return new UpdatePlayerResponseDto(
@@ -137,11 +157,8 @@ export class PlayersService {
     } catch (e) {
       console.error(e);
 
-      return new UpdatePlayerResponseDto(
-        400,
-        false,
-        'error level upping player',
-        0,
+      throw new BadRequestException(
+        new UpdatePlayerResponseDto(400, false, 'error level upping player', 0),
       );
     }
   }
@@ -160,11 +177,8 @@ export class PlayersService {
     } catch (e) {
       console.error(e);
 
-      return new DeletePlayerResponseDto(
-        400,
-        false,
-        'error removing player',
-        0,
+      throw new BadRequestException(
+        new DeletePlayerResponseDto(400, false, 'error removing player', 0),
       );
     }
   }
@@ -176,5 +190,28 @@ export class PlayersService {
       .first();
 
     if (!result) throw new NotFoundException('player not found.');
+  }
+
+  async nameExists(name: string, type: string) {
+    const result = await this.knex('players')
+      .count('names')
+      .from('players')
+      .where('name', '=', name);
+
+    if (result['count'] > 0)
+      throw new BadRequestException(
+        type === 'create'
+          ? new CreatePlayerResponseDto(
+              400,
+              false,
+              'this name already exists in database.',
+            )
+          : new UpdatePlayerResponseDto(
+              400,
+              false,
+              'this name already exists in database.',
+              0,
+            ),
+      );
   }
 }

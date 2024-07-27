@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Knex } from 'knex';
 import { PlayerItem } from './entity/player-items.entity';
 import { CreatePlayerItemRequestDto } from './dtos/create-player-item-request.dto';
@@ -46,12 +50,14 @@ export class PlayersItemsService {
     } catch (e) {
       console.error(e);
 
-      return new GetAllItemsByPlayerIdResponseDto(
-        400,
-        false,
-        0,
-        [],
-        'error retrieving the items.',
+      throw new BadRequestException(
+        new GetAllItemsByPlayerIdResponseDto(
+          400,
+          false,
+          0,
+          [],
+          'error retrieving the items.',
+        ),
       );
     }
   }
@@ -64,28 +70,45 @@ export class PlayersItemsService {
     try {
       await this.playersService.exists(playerId);
       await this.itemsService.exists(itemId);
-      const playerItem: PlayerItem = {
-        player_id: playerId,
-        item_id: itemId,
-        quantity: dto.quantity,
-        acquired_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
-      };
+      const playerItemDb = await this.knex<PlayerItem>('players_items')
+        .select('quantity')
+        .where({ player_id: playerId, item_id: itemId })
+        .first();
+      if (!playerItemDb) {
+        const playerItem: PlayerItem = {
+          player_id: playerId,
+          item_id: itemId,
+          quantity: dto.quantity,
+          acquired_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        };
+        await this.knex('players_items').insert(playerItem);
 
-      await this.knex('players_items').insert(playerItem);
+        return new CreatePlayerItemResponseDto(
+          200,
+          true,
+          'item of player added successfully.',
+        );
+      } else {
+        await this.knex('players_items')
+          .update({ quantity: (playerItemDb.quantity += dto.quantity) })
+          .where({ player_id: playerId, item_id: itemId });
 
-      return new CreatePlayerItemResponseDto(
-        200,
-        true,
-        'item of player added successfully.',
-      );
+        return new CreatePlayerItemResponseDto(
+          200,
+          true,
+          'item quantity of player added successfully.',
+        );
+      }
     } catch (e) {
       console.error(e);
 
-      return new CreatePlayerItemResponseDto(
-        400,
-        false,
-        'error adding the item of player.',
+      throw new BadRequestException(
+        new CreatePlayerItemResponseDto(
+          400,
+          false,
+          'error adding the item of player.',
+        ),
       );
     }
   }
@@ -137,11 +160,13 @@ export class PlayersItemsService {
     } catch (e) {
       console.error(e);
 
-      return new DeletePlayerItemResponseDto(
-        400,
-        false,
-        'error removing or decrementing the item of player.',
-        0,
+      throw new BadRequestException(
+        new DeletePlayerItemResponseDto(
+          400,
+          false,
+          'error removing or decrementing the item of player.',
+          0,
+        ),
       );
     }
   }

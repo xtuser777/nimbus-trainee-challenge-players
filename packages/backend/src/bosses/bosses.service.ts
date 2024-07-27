@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { Knex } from 'knex';
 import { Boss } from './entity/boss.entity';
 import { randomUUID } from 'node:crypto';
@@ -37,12 +41,14 @@ export class BossesService {
     } catch (e) {
       console.error(e);
 
-      return new GetAllBossesResponseDto(
-        400,
-        false,
-        0,
-        [],
-        'error returning bosses.',
+      throw new BadRequestException(
+        new GetAllBossesResponseDto(
+          400,
+          false,
+          0,
+          [],
+          'error returning bosses.',
+        ),
       );
     }
   }
@@ -56,17 +62,20 @@ export class BossesService {
     } catch (e) {
       console.error(e);
 
-      return new GetOneBossResponseDto(
-        400,
-        false,
-        undefined,
-        'error returning boss.',
+      throw new BadRequestException(
+        new GetOneBossResponseDto(
+          400,
+          false,
+          undefined,
+          'error returning boss.',
+        ),
       );
     }
   }
 
   async save(dto: CreateBossRequestDto) {
     try {
+      await this.nameExists(dto.name, 'create');
       const boss: Boss = {
         id: randomUUID(),
         ...dto,
@@ -79,13 +88,16 @@ export class BossesService {
     } catch (e) {
       console.error(e);
 
-      return new CreateBossResponseDto(400, false, 'error creating boss.');
+      throw new BadRequestException(
+        new CreateBossResponseDto(400, false, 'error creating boss.'),
+      );
     }
   }
 
   async update(id: string, dto: UpdateBossRequestDto) {
     try {
       await this.exists(id);
+      await this.nameExists(dto.name, 'update');
       const result = await this.knex('bosses')
         .update({ ...dto })
         .where('id', id);
@@ -99,13 +111,27 @@ export class BossesService {
     } catch (e) {
       console.error(e);
 
-      return new UpdateBossResponseDto(400, false, 'error updating boss.', 0);
+      throw new BadRequestException(
+        new UpdateBossResponseDto(400, false, 'error updating boss.', 0),
+      );
     }
   }
 
   async delete(id: string) {
     try {
       await this.exists(id);
+      const row = await this.knex('players_bosses')
+        .count('*')
+        .where({ boss_id: id });
+      if (row['count'] > 0)
+        throw new BadRequestException(
+          new DeleteBossResponseDto(
+            400,
+            false,
+            'boss defeated by one or more players.',
+            0,
+          ),
+        );
       const result = await this.knex('bosses').where({ id }).del();
 
       return new DeleteBossResponseDto(
@@ -117,7 +143,9 @@ export class BossesService {
     } catch (e) {
       console.error(e);
 
-      return new DeleteBossResponseDto(400, false, 'error updating boss.', 0);
+      throw new BadRequestException(
+        new DeleteBossResponseDto(400, false, 'error updating boss.', 0),
+      );
     }
   }
 
@@ -125,5 +153,28 @@ export class BossesService {
     const result = await this.knex('bosses').select('id').where({ id }).first();
 
     if (!result) throw new NotFoundException('boss not found.');
+  }
+
+  async nameExists(name: string, type: string) {
+    const result = await this.knex('bosses')
+      .count('names')
+      .from('bosses')
+      .where('name', '=', name);
+
+    if (result['count'] > 0)
+      throw new BadRequestException(
+        type === 'create'
+          ? new CreateBossResponseDto(
+              400,
+              false,
+              'this name already exists in database.',
+            )
+          : new UpdateBossResponseDto(
+              400,
+              false,
+              'this name already exists in database.',
+              0,
+            ),
+      );
   }
 }
